@@ -1,5 +1,6 @@
 from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, \
     F, Prefetch, QuerySet
+from rest_framework.utils.mediatypes import order_by_precedence
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
 from socialnetwork.models import Posts, SocialNetworkUsers
@@ -251,6 +252,10 @@ def bullshitters():
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
     ######################### TODO: This is my solution for T3
+    #all_bullshitters = Fame.objects
+    #    .filter(fame_level__numeric_value_lt=0)
+    #    .order_by("fame_level__numeric_value_lt","-user__date_joined")
+    # commented out for the push
     all_bullshitters = (FameLevels.objects
         .filter(numeric_value__lt=0)
         .values("numeric_value","fame__user","fame__expertise_area")
