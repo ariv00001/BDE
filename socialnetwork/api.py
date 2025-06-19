@@ -1,4 +1,5 @@
-from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, F, Prefetch
+from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, \
+    F, Prefetch, QuerySet
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
 from socialnetwork.models import Posts, SocialNetworkUsers
@@ -109,7 +110,7 @@ def submit_post(
     3. a boolean indicating whether the user was banned and logged out and should be redirected to the login page
     """
 
-    # create post  instance:
+    # create post instance:
     post = Posts.objects.create(
         content=content,
         author=user,
@@ -127,9 +128,63 @@ def submit_post(
     redirect_to_logout = False
 
 
-    #########################
-    # add your code here
-    #########################
+    ######################### TODO: This is my solution to T1
+    negative_user_expertise_areas = (
+        user.expertise_area
+            .filter(fame__fame_level__gt=0)
+            .values_list("expertiseareas__pk", flat=True)
+    )
+    expertise_areas_in_post = [e["expertise_area"].id for e in _expertise_areas]
+    #print(expertise_areas_in_post, negative_user_expertise_areas)
+    #print(set(negative_user_expertise_areas) & set(expertise_areas_in_post))
+    all_expertise_areas_that_are_negative_fame_for_user_and_in_post = set(negative_user_expertise_areas) & set(expertise_areas_in_post)
+    post.published = post.published and (len(all_expertise_areas_that_are_negative_fame_for_user_and_in_post) == 0) #negative_user_expertise_areas.intersection(QuerySet(_expertise_areas)).count() == 0
+    ######################### TODO: This is the end of my solution for T1
+
+    ######################### TODO: This is my solution for T2
+    def lowerFame():
+        #print(_expertise_areas)
+        expertise_areas_with_negative_thruth_rating = [e["expertise_area"].id for e in _expertise_areas if e["truth_rating"] is not None and e["truth_rating"].numeric_value < 0]
+        #print(expertise_areas_with_negative_thruth_rating)
+        for expertise_area in expertise_areas_with_negative_thruth_rating:
+            previous_fame, created = Fame.objects.get_or_create(
+                user = user,
+                expertise_area=expertise_area,
+                defaults = {"fame_level": FameLevels.objects.get(numeric_value = -10)} # -10 is 'Confuser' (see fakedata line 123)
+            )
+            if(created): # e.g. we had to create the Expertise_area
+                continue # we skip the rest
+
+            #e.g. if we need to lower the existing fame
+            try:
+                updatedFame = {"fame_level": previous_fame.fame_level.get_next_lower_fame_level()}
+                Fame.objects.update_or_create( # Info: we could also use user._do_update(...) or Fame.objects.update(...), since we know that the entry exists. (So no create ever done)
+                    user=user,
+                    expertise_area = expertise_area,
+                    defaults = updatedFame, create_defaults = updatedFame
+                )
+            except ValueError: # this happens, if we cannot decrease the fame anymore
+                #e.g. delete/ bann user
+                deleteUser()
+                return True # logout
+        return False # no logout
+
+    def deleteUser():
+        # Deactivate user
+        FameUsers.objects.update_or_create(
+            id = user.id,
+            defaults = {"is_active": False},
+        )
+
+        # Unpublish all posts
+        Posts.objects.filter(author=user.id).update(published=False)
+
+
+
+
+    if (_at_least_one_expertise_area_contains_bullshit):
+        redirect_to_logout = lowerFame()
+    ######################### TODO: This is the end of my solution for T2
 
     post.save()
 
@@ -188,11 +243,11 @@ def bullshitters():
     users with the lowest fame are shown first, in case there is a tie, within that tie sort by date_joined
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
-    pass
+    #pass
     #########################
     # add your code here
     #########################
-
+    #return Fame.objects.filter(Fame__fame_users__expertisearea__lt=0).order_by("expertise_area").order_by("date_joined").to_dict()
 
 
 
