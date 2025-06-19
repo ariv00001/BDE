@@ -158,11 +158,17 @@ def submit_post(
             #e.g. if we need to lower the existing fame
             try:
                 updatedFame = {"fame_level": previous_fame.fame_level.get_next_lower_fame_level()}
+                Fame.objects.filter( # use filter instead of get
+                    user=user,
+                    expertise_area=expertise_area
+                ).update(**updatedFame)
+                '''
                 Fame.objects.update_or_create( # Info: we could also use user._do_update(...) or Fame.objects.update(...), since we know that the entry exists. (So no create ever done)
                     user=user,
                     expertise_area = expertise_area,
                     defaults = updatedFame, create_defaults = updatedFame
                 )
+                '''
             except ValueError: # this happens, if we cannot decrease the fame anymore
                 #e.g. delete/ bann user
                 deleteUser()
@@ -171,14 +177,15 @@ def submit_post(
 
     def deleteUser():
         # Deactivate user
-        FameUsers.objects.update_or_create(
+        FameUsers.objects.update_or_create( #TODO: could filter
             id = user.id,
             defaults = {"is_active": False},
         )
 
         # Unpublish all posts
-        Posts.objects.filter(author=user.id).update(published=False)
-
+        Posts.objects.filter(
+            author=user.id
+        ).update(published=False)
 
 
 
@@ -243,11 +250,33 @@ def bullshitters():
     users with the lowest fame are shown first, in case there is a tie, within that tie sort by date_joined
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
-    #pass
-    #########################
-    # add your code here
-    #########################
-    #return Fame.objects.filter(Fame__fame_users__expertisearea__lt=0).order_by("expertise_area").order_by("date_joined").to_dict()
+    ######################### TODO: This is my solution for T3
+    all_bullshitters = (FameLevels.objects
+        .filter(numeric_value__lt=0)
+        .values("numeric_value","fame__user","fame__expertise_area")
+        .annotate(fame_level_numeric=F("numeric_value"),
+                  user=F("fame__user"),
+                  expertise_area=F("fame__expertise_area"))
+        .values("fame_level_numeric","user","expertise_area")
+        .filter(user__isnull=False, expertise_area__isnull=False)
+        .order_by("fame_level_numeric","-fame__user__date_joined") # aufsteigendes fame level bedeutet, dass zuerst die 'negativsten' Werte kommen
+        #.group_by("expertise_area") # geht leider nicht           # absteigende daten bedeuten, dass die größten werte (2025) vor den älteren (1999) kommen
+     )
+
+    bullshitters_by_expertise_area = {}
+    for entry in all_bullshitters: # they are ordered, thus I will traverse them
+        if(entry["expertise_area"] in bullshitters_by_expertise_area):
+            bullshitters_by_expertise_area[entry["expertise_area"]].append({
+                "user": entry["user"],
+                "fame_level_numeric": entry["fame_level_numeric"],
+            })
+        else:
+            bullshitters_by_expertise_area[entry["expertise_area"]] = [{
+                "user": entry["user"],
+                "fame_level_numeric": entry["fame_level_numeric"],
+            }]
+    return bullshitters_by_expertise_area
+    ######################### TODO: This is the end of my solution for T3
 
 
 
