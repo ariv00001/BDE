@@ -339,6 +339,7 @@ def similar_users(user: SocialNetworkUsers):
                 )
             )
             .order_by("-similarity", "date_joined")
+            .filter(similarity=0)
     )
 
     return annotated_fame_users
