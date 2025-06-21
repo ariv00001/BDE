@@ -328,7 +328,7 @@ def similar_users(user: SocialNetworkUsers):
         )
     '''
 
-
+    '''
 
     class Abs(Func):
         function = 'ABS'
@@ -361,10 +361,10 @@ def similar_users(user: SocialNetworkUsers):
                     default=Value(0),
                     output_field=IntegerField()
                 )
-            )
+            ) / user.expertise_area.count().__float__()
         )
 
-
+    '''
     #    Sum(
     #        Case(
     #            *user_expretise_area_case_when_clauses,
@@ -373,7 +373,48 @@ def similar_users(user: SocialNetworkUsers):
     #        )
     #    ) #/ (user.expertise_area.count().__float__())#, output_field=FloatField())
 
-    print(cumultative_sum.first().similarity, user.expertise_area.count())
+    class Abs(Func):
+        function = 'ABS'
+
+    # create all cases for user's expertise_area's
+    user_expretise_area_case_when_clauses = []
+    # match existing area
+    for area in user.expertise_area.all():
+        user_fame_numeric_value = Fame.objects.filter(user=user.id, expertise_area=area).values_list("fame_level__numeric_value").first()[0]
+        user_expretise_area_case_when_clauses.append(
+            When(
+                expertise_area=area,
+                then=ExpressionWrapper(Abs(F("fame_level__numeric_value") - user_fame_numeric_value), output_field=IntegerField())
+            )
+        )
+
+    similar_users = (
+        Fame.objects
+            .exclude(user=user)
+            .select_related("fame_users")
+            .annotate(difference = Case(
+                *user_expretise_area_case_when_clauses,
+                default=Value(999),
+                output_field=IntegerField()
+                )
+            )
+            .values("user")
+            .annotate(similarity= Count(Q(difference__lt=100), filter=Q(difference__lt=100)) / Value(user.expertise_area.count().__float__()))
+        )
+
+    annotated_fame_users = (
+        FameUsers.objects
+            .exclude(id=user.id)
+            .annotate(similarity = Subquery(
+                similar_users
+                    .filter(user=OuterRef("id"))
+                    .values("similarity")
+                )
+            )
+            .order_by("-similarity", "date_joined")
+    )
+
+    return annotated_fame_users
     ######################### TODO: This is the end of my solution for T5
 
 
