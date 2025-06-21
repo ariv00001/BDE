@@ -1,5 +1,8 @@
+from email.policy import default
+
 from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, \
-    F, Prefetch, QuerySet
+    F, Prefetch, QuerySet, Sum, Subquery, Func
+from django.db.models.expressions import CombinedExpression
 from rest_framework.utils.mediatypes import order_by_precedence
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
@@ -252,11 +255,9 @@ def bullshitters():
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
     ######################### TODO: This is my solution for T3
-    #all_bullshitters = Fame.objects
-    #    .filter(fame_level__numeric_value_lt=0)
-    #    .order_by("fame_level__numeric_value_lt","-user__date_joined")
-    # commented out for the push
-    all_bullshitters = (FameLevels.objects
+    all_bullshitters = (
+        FameLevels.objects
+        .select_related("fame__user","fame__expertise_area")
         .filter(numeric_value__lt=0)
         .values("numeric_value","fame__user","fame__expertise_area")
         .annotate(fame_level_numeric=F("numeric_value"),
@@ -268,18 +269,14 @@ def bullshitters():
         #.group_by("expertise_area") # geht leider nicht           # absteigende daten bedeuten, dass die größten werte (2025) vor den älteren (1999) kommen
      )
 
+    print(all_bullshitters)
     bullshitters_by_expertise_area = {}
     for entry in all_bullshitters: # they are ordered, thus I will traverse them
-        if(entry["expertise_area"] in bullshitters_by_expertise_area):
-            bullshitters_by_expertise_area[entry["expertise_area"]].append({
+        bullshitters_by_expertise_area.setdefault(entry["expertise_area"],[]).append({
                 "user": entry["user"],
                 "fame_level_numeric": entry["fame_level_numeric"],
             })
-        else:
-            bullshitters_by_expertise_area[entry["expertise_area"]] = [{
-                "user": entry["user"],
-                "fame_level_numeric": entry["fame_level_numeric"],
-            }]
+    print(bullshitters_by_expertise_area)
     return bullshitters_by_expertise_area
     ######################### TODO: This is the end of my solution for T3
 
@@ -297,19 +294,92 @@ def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):
 
 
 
-def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
-    """Leave a specified community."""
-    pass
-    #########################
-    # add your code here
-    #########################
-
-
-
 def similar_users(user: SocialNetworkUsers):
     """Compute the similarity of user with all other users. The method returns a QuerySet of FameUsers annotated
     with an additional field 'similarity'. Sort the result in descending order according to 'similarity', in case
     there is a tie, within that tie sort by date_joined (most recent first)"""
+
+    ######################### TODO: This is my solution for T5
+    '''
+    for area in user.expertise_area.all():
+        user_fame_numeric_value = Fame.objects.filter(user=user.id, expertise_area=area).values_list("fame_level__numeric_value").first()[0]
+        annotated_users_by_area = (
+            FameUsers.objects
+            .exclude(id=user.id)
+            .filter(expertise_area=area)
+            .annotate(sub= F("fame__fame_level__numeric_value") - user_fame_numeric_value)
+        )
+
+    cumultative_sum = FameUsers.objects.exclude(id=user.id).annotate(similarity=Value(0))
+    for area in user.expertise_area.all():
+        user_fame_numeric_value = Fame.objects.filter(user=user.id, expertise_area=area).values_list("fame_level__numeric_value").first()[0]
+        (
+            cumultative_sum
+                .annotate(
+                    similarity= F("similarity") + Case(
+                        When(
+                            expertise_area=area,
+                            then= F("fame__fame_level__numeric_value") - user_fame_numeric_value
+                        ),
+                        default=Value(0),
+                        output_field=IntegerField()
+                    )
+            )
+        )
+    '''
+
+
+
+    class Abs(Func):
+        function = 'ABS'
+
+    # create all cases for user's expertise_area's
+    user_expretise_area_case_when_clauses = []
+    # match existing area
+    for area in user.expertise_area.all():
+        user_fame_numeric_value = Fame.objects.filter(user=user.id, expertise_area=area).values_list("fame_level__numeric_value").first()[0]
+        user_expretise_area_case_when_clauses.append(
+            When(
+                expertise_area=area,
+                then=ExpressionWrapper(F("fame__fame_level__numeric_value") - user_fame_numeric_value, output_field=IntegerField())
+            )
+        )
+
+    cumultative_sum = FameUsers.objects.exclude(id=user.id)#.annotate(similarity=Value(0))
+    cumultative_sum = cumultative_sum.annotate(
+        similarity=Sum(
+            When(
+                Q(
+                    Case(
+                        *user_expretise_area_case_when_clauses,
+                        default=Value(999),
+                        output_field=IntegerField()
+                    )
+                    .output_field < IntegerField(100)
+                ),
+                    then=Value(1),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            )
+        )
+
+
+    #    Sum(
+    #        Case(
+    #            *user_expretise_area_case_when_clauses,
+    #            default=Value(0),
+    #            output_field=FloatField()
+    #        )
+    #    ) #/ (user.expertise_area.count().__float__())#, output_field=FloatField())
+
+    print(cumultative_sum.first().similarity, user.expertise_area.count())
+    ######################### TODO: This is the end of my solution for T5
+
+
+
+def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
+    """Leave a specified community."""
     pass
     #########################
     # add your code here
