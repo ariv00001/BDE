@@ -1,4 +1,5 @@
 from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, F, Prefetch
+from docs.conf import author
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
 from socialnetwork.models import Posts, SocialNetworkUsers
@@ -29,9 +30,13 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 4. the post is published or the user is the author
 
         pass
-        #########################
-        # add your code here
-        #########################
+        #_communities = user.communities.all()
+        #posts = Posts.objects.filter(
+        #    (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
+        #     Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
+        #     Q (expertise_area_and_truth_ratings=F('author__communities')) & # Check if the author knows their stuff
+        #    (Q(published=published)) | Q(author=user))
+        #).order_by("-submitted")
 
     else:
         # in standard mode, posts of followed users are displayed
@@ -201,19 +206,21 @@ def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Join a specified community. Note that this method does not check whether the user is eligible for joining the
     community.
     """
-    pass
-    #########################
-    # add your code here
-    #########################
+    if community in user.communities.all():
+        return {"joined": False}
+    user.communities.add(community)
+    user.save()
+    return {"joined": True}
 
 
 
 def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Leave a specified community."""
-    pass
-    #########################
-    # add your code here
-    #########################
+    if community not in user.communities.all():
+        return {"left": False}
+    user.communities.remove(community)
+    user.save()
+    return {"left": True}
 
 
 
