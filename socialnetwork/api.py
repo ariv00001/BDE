@@ -326,7 +326,7 @@ def similar_users(user: SocialNetworkUsers):
                 )
             )
             .values("user")
-            .annotate(similarity= Count(Q(difference__lt=100), filter=Q(difference__lt=100)) / Value(user.expertise_area.count().__float__()))
+            .annotate(similarity= Count(Q(difference__lt=100), filter=Q(difference__lte=100)) / Value(user.expertise_area.count().__float__()))
         )
 
     annotated_fame_users = (
