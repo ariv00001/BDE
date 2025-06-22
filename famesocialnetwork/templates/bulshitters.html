@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 
 {% load static %}
+{% load fameUserHelpers %}
+
 
 {% block title %}Bulshitters{% endblock %}
 
@@ -15,10 +17,12 @@
         {% for bulshitter  in ordered_bulshiters_data %}
             <li class="list-group-item d-flex justify-content-between align-items-center">
                     <div class="card-body position-relative">
-                        User: {{ bulshitter.user }}
+                         <a href="/fame/html/fame?userid={{ bulshitter.user.id }}">
+                        {{ bulshitter.user.username }}
+                         </a>
                     </div>
                     <span class="badge text-bg-primary rounded-pill">
-                        Level: {{ bulshitter.fame_level_numeric}}
+                        Level: {{ bulshitter.fame_level_numeric | fametitle}}
                     </span>
 
             </li>

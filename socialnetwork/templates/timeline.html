@@ -32,8 +32,8 @@
         <div class="card"
              style="margin-bottom: 20px; margin-left: 40px; margin-right: 40px; background-color: {% if post.published %}white{% else %}mistyrose{% endif %};">
             <div class="flex-container">
-                <b><a href="/fame/html/fame?userid={{ post.author.id }}">{{ post.author.name|highlight:searchkeyword }}
-                </b></a>&nbsp;
+                <b><a href="/fame/html/fame?userid={{ post.author.id }}">{{ post.author.name|highlight:searchkeyword }}</a>&nbsp;
+                </b>
                 <span style="color:gray">{{ post.author.email|highlight:searchkeyword }}</span>&nbsp;&nbsp;
                 <span style="color:gray">{{ post.date_submitted }}</span>
                 {% if not post.published %}
