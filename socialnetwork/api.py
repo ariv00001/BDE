@@ -135,11 +135,11 @@ def submit_post(
     ######################### TODO: T1
     negative_fame_expertise_areas_of_user = (
         Fame.objects
-            .filter(user=user, fame_level__is_negative=True)
+            .filter(user=user, fame_level__numeric_value__lt=0)
             .values_list("expertise_area", flat=True)
     )
 
-    if not set(negative_fame_expertise_areas_of_user).isdisjoint(set(_expertise_areas)):
+    if not set(negative_fame_expertise_areas_of_user).isdisjoint(set([i["expertise_area"].id for i in _expertise_areas])):
         # aka post contains negative-fame-expertise_area of user
         post.published = False
 
@@ -157,7 +157,7 @@ def submit_post(
             ),
         }'''
     for expertise_area in _expertise_areas:
-        if not expertise_area["truth_rating"].numeric_value < 0: continue
+        if expertise_area["truth_rating"] is None or not expertise_area["truth_rating"].numeric_value < 0: continue
 
         fame_entry, created = (
             Fame.objects
@@ -173,14 +173,15 @@ def submit_post(
 
         try:
             lowered_fame_level = fame_entry.fame_level.get_next_lower_fame_level()
-            fame_entry.update({"fame_level": lowered_fame_level})
+            fame_entry.fame_level = lowered_fame_level
+            fame_entry.save(update_fields=["fame_level"])
         except ValueError:
             # aka cannot decrease fame_level
             user.is_active = False
             user.save(update_fields=["is_active"])
             redirect_to_logout = True
 
-            Posts.objects.filter(user=user).update(published=False)
+            Posts.objects.filter(author=user).update(published=False)
 
     #########################
 
@@ -242,6 +243,7 @@ def bullshitters():
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
     ######################### TODO: This is my solution for T3
+    '''
     all_bullshitters = (
         FameLevels.objects
         .select_related("fame__user","fame__expertise_area")
@@ -266,6 +268,23 @@ def bullshitters():
     #print(bullshitters_by_expertise_area)
     return bullshitters_by_expertise_area
     ######################### TODO: This is the end of my solution for T3
+    '''
+    negative_fame_users_with_expertise_areas = (
+        Fame.objects
+            .filter(fame_level__numeric_value__lt=0)
+            .select_related("user","expertise_area","fame_level") # get all datas by directly "joining" on id
+            .order_by("fame_level__numeric_value","-user__date_joined")
+    )
+
+    bullshitters_by_expertise_area = {}
+    for fame_data in negative_fame_users_with_expertise_areas:
+        bullshitters_by_expertise_area.setdefault(fame_data.expertise_area,[]).append({
+            "user": fame_data.user,
+            "fame_level_numeric": fame_data.fame_level.numeric_value,
+        })
+
+
+    return bullshitters_by_expertise_area
 
 
 
