@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}Bulshitters{% endblock %}
+
+{% block body %}
+
+
+    <h1>All the bulshitters we could find are listed here</h1>
+
+{% for expertise_area_name, ordered_bulshiters_data in bulshitters.items %}
+    <h3 style="margin-left: 40px">Area: {{ expertise_area_name }}</h3>
+    <ul class="list-group">
+        {% for bulshitter  in ordered_bulshiters_data %}
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="card-body position-relative">
+                        User: {{ bulshitter.user }}
+                    </div>
+                    <span class="badge text-bg-primary rounded-pill">
+                        Level: {{ bulshitter.fame_level_numeric}}
+                    </span>
+
+            </li>
+
+        {% endfor %}
+    </ul>
+
+{% endfor %}
+{% endblock %}
+

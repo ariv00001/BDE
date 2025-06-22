@@ -263,20 +263,20 @@ def bullshitters():
         .annotate(fame_level_numeric=F("numeric_value"),
                   user=F("fame__user"),
                   expertise_area=F("fame__expertise_area"))
-        .values("fame_level_numeric","user","expertise_area")
+        .values("fame_level_numeric","user","fame__expertise_area__label")#,"name")
         .filter(user__isnull=False, expertise_area__isnull=False)
         .order_by("fame_level_numeric","-fame__user__date_joined") # aufsteigendes fame level bedeutet, dass zuerst die 'negativsten' Werte kommen
         #.group_by("expertise_area") # geht leider nicht           # absteigende daten bedeuten, dass die größten werte (2025) vor den älteren (1999) kommen
      )
 
-    print(all_bullshitters)
+    #print(all_bullshitters)
     bullshitters_by_expertise_area = {}
     for entry in all_bullshitters: # they are ordered, thus I will traverse them
-        bullshitters_by_expertise_area.setdefault(entry["expertise_area"],[]).append({
+        bullshitters_by_expertise_area.setdefault(entry["fame__expertise_area__label"],[]).append({
                 "user": entry["user"],
                 "fame_level_numeric": entry["fame_level_numeric"],
             })
-    print(bullshitters_by_expertise_area)
+    #print(bullshitters_by_expertise_area)
     return bullshitters_by_expertise_area
     ######################### TODO: This is the end of my solution for T3
 
