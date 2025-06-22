@@ -132,70 +132,57 @@ def submit_post(
     redirect_to_logout = False
 
 
-    ######################### TODO: This is my solution to T1
-    negative_user_expertise_areas = (
-        user.expertise_area
-            .filter(fame__fame_level__gt=0)
-            .values_list("expertiseareas__pk", flat=True)
+    ######################### TODO: T1
+    negative_fame_expertise_areas_of_user = (
+        Fame.objects
+            .filter(user=user, fame_level__is_negative=True)
+            .values_list("expertise_area", flat=True)
     )
-    expertise_areas_in_post = [e["expertise_area"].id for e in _expertise_areas]
-    #print(expertise_areas_in_post, negative_user_expertise_areas)
-    #print(set(negative_user_expertise_areas) & set(expertise_areas_in_post))
-    all_expertise_areas_that_are_negative_fame_for_user_and_in_post = set(negative_user_expertise_areas) & set(expertise_areas_in_post)
-    post.published = post.published and (len(all_expertise_areas_that_are_negative_fame_for_user_and_in_post) == 0) #negative_user_expertise_areas.intersection(QuerySet(_expertise_areas)).count() == 0
-    ######################### TODO: This is the end of my solution for T1
 
-    ######################### TODO: This is my solution for T2
-    def lowerFame():
-        #print(_expertise_areas)
-        expertise_areas_with_negative_thruth_rating = [e["expertise_area"].id for e in _expertise_areas if e["truth_rating"] is not None and e["truth_rating"].numeric_value < 0]
-        #print(expertise_areas_with_negative_thruth_rating)
-        for expertise_area in expertise_areas_with_negative_thruth_rating:
-            previous_fame, created = Fame.objects.get_or_create(
-                user = user,
-                expertise_area=expertise_area,
-                defaults = {"fame_level": FameLevels.objects.get(numeric_value = -10)} # -10 is 'Confuser' (see fakedata line 123)
-            )
-            if(created): # e.g. we had to create the Expertise_area
-                continue # we skip the rest
+    if not set(negative_fame_expertise_areas_of_user).isdisjoint(set(_expertise_areas)):
+        # aka post contains negative-fame-expertise_area of user
+        post.published = False
 
-            #e.g. if we need to lower the existing fame
-            try:
-                updatedFame = {"fame_level": previous_fame.fame_level.get_next_lower_fame_level()}
-                Fame.objects.filter( # use filter instead of get
-                    user=user,
-                    expertise_area=expertise_area
-                ).update(**updatedFame)
-                '''
-                Fame.objects.update_or_create( # Info: we could also use user._do_update(...) or Fame.objects.update(...), since we know that the entry exists. (So no create ever done)
-                    user=user,
-                    expertise_area = expertise_area,
-                    defaults = updatedFame, create_defaults = updatedFame
+    ######################### TODO: T2
+    '''Magic_AI returns LIST OF {
+            "expertise_area": s,  <--- ExpertiseAreas-object
+            "truth_rating": (
+                None
+                if lre.random() < 0.2
+                else (  # sometimes the AI cannot determine the truth rating
+                    get_truth_ratings(True)
+                    if lre.random() < 0.8
+                    else get_truth_ratings(False)   <--- TruthRatings-object
                 )
-                '''
-            except ValueError: # this happens, if we cannot decrease the fame anymore
-                #e.g. delete/ bann user
-                deleteUser()
-                return True # logout
-        return False # no logout
+            ),
+        }'''
+    for expertise_area in _expertise_areas:
+        if not expertise_area["truth_rating"].numeric_value < 0: continue
 
-    def deleteUser():
-        # Deactivate user
-        FameUsers.objects.update_or_create( #TODO: could filter
-            id = user.id,
-            defaults = {"is_active": False},
+        fame_entry, created = (
+            Fame.objects
+                .get_or_create( # <- if not existant by the keys, create new instance with the given fields (default there for filling up the not-keys
+                    user=user,
+                    expertise_area=expertise_area["expertise_area"],
+                    defaults={
+                        "fame_level": FameLevels.objects.get(name="Confuser")
+                    }
+                )
         )
+        if created: continue # since we don't need to update
 
-        # Unpublish all posts
-        Posts.objects.filter(
-            author=user.id
-        ).update(published=False)
+        try:
+            lowered_fame_level = fame_entry.fame_level.get_next_lower_fame_level()
+            fame_entry.update({"fame_level": lowered_fame_level})
+        except ValueError:
+            # aka cannot decrease fame_level
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            redirect_to_logout = True
 
+            Posts.objects.filter(user=user).update(published=False)
 
-
-    if (_at_least_one_expertise_area_contains_bullshit):
-        redirect_to_logout = lowerFame()
-    ######################### TODO: This is the end of my solution for T2
+    #########################
 
     post.save()
 
