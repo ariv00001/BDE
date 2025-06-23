@@ -1,8 +1,10 @@
+from email.policy import default
+
 from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, \
-    F, Prefetch, QuerySet, Prefetch
-from docs.conf import author
+    F, Prefetch, QuerySet, Sum, Subquery, Func
+from django.db.models.expressions import CombinedExpression
 from rest_framework.utils.mediatypes import order_by_precedence
-from ftplib import print_line
+from docs.conf import author
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
 from socialnetwork.models import Posts, SocialNetworkUsers
@@ -135,68 +137,58 @@ def submit_post(
     redirect_to_logout = False
 
 
-    ######################### TODO: This is my solution to T1
-    negative_user_expertise_areas = (
-        user.expertise_area
-            .filter(fame__fame_level__gt=0)
-            .values_list("expertiseareas__pk", flat=True)
+    ######################### TODO: T1
+    negative_fame_expertise_areas_of_user = (
+        Fame.objects
+            .filter(user=user, fame_level__numeric_value__lt=0)
+            .values_list("expertise_area", flat=True)
     )
-    expertise_areas_in_post = [e["expertise_area"].id for e in _expertise_areas]
-    #print(expertise_areas_in_post, negative_user_expertise_areas)
-    #print(set(negative_user_expertise_areas) & set(expertise_areas_in_post))
-    all_expertise_areas_that_are_negative_fame_for_user_and_in_post = set(negative_user_expertise_areas) & set(expertise_areas_in_post)
-    post.published = post.published and (len(all_expertise_areas_that_are_negative_fame_for_user_and_in_post) == 0) #negative_user_expertise_areas.intersection(QuerySet(_expertise_areas)).count() == 0
-    ######################### TODO: This is the end of my solution for T1
 
-    ######################### TODO: This is my solution for T2
-    def lowerFame():
-        expertise_areas_with_negative_thruth_rating = [e["expertise_area"] for e in _expertise_areas if e["truth_rating"] is not None and e["truth_rating"].numeric_value < 0]
-        for expertise_area in expertise_areas_with_negative_thruth_rating:
-            previous_fame, created = Fame.objects.get_or_create(
-                user = user,
-                expertise_area=expertise_area,
-                defaults = {"fame_level": FameLevels.objects.get(numeric_value = -10)} # -10 is 'Confuser' (see fakedata line 123)
-            )
-            if(created): # e.g. we had to create the Expertise_area
-                continue # we skip the rest
+    if not set(negative_fame_expertise_areas_of_user).isdisjoint(set([i["expertise_area"].id for i in _expertise_areas])):
+        # aka post contains negative-fame-expertise_area of user
+        post.published = False
 
-            #e.g. if we need to lower the existing fame
-            try:
-                updatedFame = {"fame_level": previous_fame.fame_level.get_next_lower_fame_level()}
-                Fame.objects.filter( # use filter instead of get
-                    user=user,
-                    expertise_area=expertise_area
-                ).update(**updatedFame)
-                '''
-                Fame.objects.update_or_create( # Info: we could also use user._do_update(...) or Fame.objects.update(...), since we know that the entry exists. (So no create ever done)
-                    user=user,
-                    expertise_area = expertise_area,
-                    defaults = updatedFame, create_defaults = updatedFame
+    ######################### TODO: T2
+    '''Magic_AI returns LIST OF {
+            "expertise_area": s,  <--- ExpertiseAreas-object
+            "truth_rating": (
+                None
+                if lre.random() < 0.2
+                else (  # sometimes the AI cannot determine the truth rating
+                    get_truth_ratings(True)
+                    if lre.random() < 0.8
+                    else get_truth_ratings(False)   <--- TruthRatings-object
                 )
-                '''
-            except ValueError: # this happens, if we cannot decrease the fame anymore
-                #e.g. delete/ bann user
-                deleteUser()
-                return True # logout
-        return False # no logout
+            ),
+        }'''
+    for expertise_area in _expertise_areas:
+        if expertise_area["truth_rating"] is None or not expertise_area["truth_rating"].numeric_value < 0: continue
 
-    def deleteUser():
-        # Deactivate user
-        FameUsers.objects.update_or_create( #TODO: could filter
-            id = user.id,
-            defaults = {"is_active": False},
+        fame_entry, created = (
+            Fame.objects
+                .get_or_create( # <- if not existant by the keys, create new instance with the given fields (default there for filling up the not-keys
+                    user=user,
+                    expertise_area=expertise_area["expertise_area"],
+                    defaults={
+                        "fame_level": FameLevels.objects.get(name="Confuser")
+                    }
+                )
         )
+        if created: continue # since we don't need to update
 
-        # Unpublish all posts
-        Posts.objects.filter(
-            author=user.id
-        ).update(published=False)
+        try:
+            lowered_fame_level = fame_entry.fame_level.get_next_lower_fame_level()
+            fame_entry.fame_level = lowered_fame_level
+            fame_entry.save(update_fields=["fame_level"])
+        except ValueError:
+            # aka cannot decrease fame_level
+            user.is_active = False
+            user.save(update_fields=["is_active"])
+            redirect_to_logout = True
 
+            Posts.objects.filter(author=user).update(published=False)
 
-
-    if (_at_least_one_expertise_area_contains_bullshit):
-        redirect_to_logout = lowerFame()
-    ######################### TODO: This is the end of my solution for T2
+    #########################
 
     #########################
     #T4:
@@ -269,36 +261,48 @@ def bullshitters():
     (most recent first). Note that expertise areas with no expert may be omitted.
     """
     ######################### TODO: This is my solution for T3
-    #all_bullshitters = Fame.objects
-    #    .filter(fame_level__numeric_value_lt=0)
-    #    .order_by("fame_level__numeric_value_lt","-user__date_joined")
-    # commented out for the push
-    all_bullshitters = (FameLevels.objects
+    '''
+    all_bullshitters = (
+        FameLevels.objects
+        .select_related("fame__user","fame__expertise_area")
         .filter(numeric_value__lt=0)
         .values("numeric_value","fame__user","fame__expertise_area")
         .annotate(fame_level_numeric=F("numeric_value"),
                   user=F("fame__user"),
                   expertise_area=F("fame__expertise_area"))
-        .values("fame_level_numeric","user","expertise_area")
+        .values("fame_level_numeric","user","fame__expertise_area__label")#,"name")
         .filter(user__isnull=False, expertise_area__isnull=False)
         .order_by("fame_level_numeric","-fame__user__date_joined") # aufsteigendes fame level bedeutet, dass zuerst die 'negativsten' Werte kommen
         #.group_by("expertise_area") # geht leider nicht           # absteigende daten bedeuten, dass die größten werte (2025) vor den älteren (1999) kommen
      )
 
+    #print(all_bullshitters)
     bullshitters_by_expertise_area = {}
     for entry in all_bullshitters: # they are ordered, thus I will traverse them
-        if(entry["expertise_area"] in bullshitters_by_expertise_area):
-            bullshitters_by_expertise_area[entry["expertise_area"]].append({
+        bullshitters_by_expertise_area.setdefault(entry["fame__expertise_area__label"],[]).append({
                 "user": entry["user"],
                 "fame_level_numeric": entry["fame_level_numeric"],
             })
-        else:
-            bullshitters_by_expertise_area[entry["expertise_area"]] = [{
-                "user": entry["user"],
-                "fame_level_numeric": entry["fame_level_numeric"],
-            }]
+    #print(bullshitters_by_expertise_area)
     return bullshitters_by_expertise_area
     ######################### TODO: This is the end of my solution for T3
+    '''
+    negative_fame_users_with_expertise_areas = (
+        Fame.objects
+            .filter(fame_level__numeric_value__lt=0)
+            .select_related("user","expertise_area","fame_level") # get all datas by directly "joining" on id
+            .order_by("fame_level__numeric_value","-user__date_joined")
+    )
+
+    bullshitters_by_expertise_area = {}
+    for fame_data in negative_fame_users_with_expertise_areas:
+        bullshitters_by_expertise_area.setdefault(fame_data.expertise_area,[]).append({
+            "user": fame_data.user,
+            "fame_level_numeric": fame_data.fame_level.numeric_value,
+        })
+
+
+    return bullshitters_by_expertise_area
 
 
 
@@ -329,8 +333,51 @@ def similar_users(user: SocialNetworkUsers):
     """Compute the similarity of user with all other users. The method returns a QuerySet of FameUsers annotated
     with an additional field 'similarity'. Sort the result in descending order according to 'similarity', in case
     there is a tie, within that tie sort by date_joined (most recent first)"""
-    pass
-    #########################
-    # add your code here
-    #########################
+
+    ######################### TODO: This is my solution for T5
+    class Abs(Func):
+        function = 'ABS'
+
+    # create all cases for user's expertise_area's
+    user_expretise_area_case_when_clauses = []
+    # match existing area
+    for area in user.expertise_area.all():
+        user_fame_numeric_value = Fame.objects.filter(user=user.id, expertise_area=area).values_list("fame_level__numeric_value").first()[0]
+        user_expretise_area_case_when_clauses.append(
+            When(
+                expertise_area=area,
+                then=ExpressionWrapper(Abs(F("fame_level__numeric_value") - user_fame_numeric_value), output_field=IntegerField())
+            )
+        )
+
+    similar_users = (
+        Fame.objects
+            .exclude(user=user)
+            .select_related("fame_users")
+            .annotate(difference = Case(
+                *user_expretise_area_case_when_clauses,
+                default=Value(999),
+                output_field=IntegerField()
+                )
+            )
+            .values("user")
+            .annotate(similarity= Count(Q(difference__lt=100), filter=Q(difference__lte=100)) / Value(user.expertise_area.count().__float__()))
+        )
+
+    annotated_fame_users = (
+        FameUsers.objects
+            .exclude(id=user.id)
+            .annotate(similarity = Subquery(
+                similar_users
+                    .filter(user=OuterRef("id"))
+                    .values("similarity")
+                )
+            )
+            .order_by("-similarity", "date_joined")
+            .filter(similarity=0)
+    )
+
+    return annotated_fame_users
+    ######################### TODO: This is the end of my solution for T5
+
 
