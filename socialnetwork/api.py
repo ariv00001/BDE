@@ -150,9 +150,7 @@ def submit_post(
 
     ######################### TODO: This is my solution for T2
     def lowerFame():
-        #print(_expertise_areas)
-        expertise_areas_with_negative_thruth_rating = [e["expertise_area"].id for e in _expertise_areas if e["truth_rating"] is not None and e["truth_rating"].numeric_value < 0]
-        #print(expertise_areas_with_negative_thruth_rating)
+        expertise_areas_with_negative_thruth_rating = [e["expertise_area"] for e in _expertise_areas if e["truth_rating"] is not None and e["truth_rating"].numeric_value < 0]
         for expertise_area in expertise_areas_with_negative_thruth_rating:
             previous_fame, created = Fame.objects.get_or_create(
                 user = user,
