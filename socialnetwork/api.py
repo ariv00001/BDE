@@ -1,3 +1,5 @@
+from ftplib import print_line
+
 from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField, Count, ExpressionWrapper, Case, Value, F, Prefetch
 from docs.conf import author
 
@@ -29,15 +31,15 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 3. the post contains the community’s expertise area
         # 4. the post is published or the user is the author
 
-        pass
-        #_communities = user.communities.all()
-        #posts = Posts.objects.filter(
-        #    (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
-        #     Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
-        #     Q (expertise_area_and_truth_ratings=F('author__communities')) & # Check if the author knows their stuff
-        #    (Q(published=published)) | Q(author=user))
-        #).order_by("-submitted")
-
+        _communities = user.communities.all()
+        print(_communities)
+        posts = Posts.objects.filter(
+            (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
+             Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
+             Q (expertise_area_and_truth_ratings=F('author__communities')) & # Check if the author knows their stuff
+             (Q(published=published) | Q(author=user)))
+        ).order_by("-submitted")
+        print(posts.query.__str__())
     else:
         # in standard mode, posts of followed users are displayed
         _follows = user.follows.all()
@@ -133,7 +135,16 @@ def submit_post(
 
 
     #########################
-    # add your code here
+    #T4:
+    # Interpretation: after submission, leave ALL unallowed communities (not just those related to the post)
+
+    # Fetch ALL expertise areas user isn't allowed to be in
+    unworthy_ids = Fame.objects.filter(Q(user = user) & Q(fame_level__lt=100)).values_list('expertise_area', flat=True)
+    unworthy_communities = ExpertiseAreas.objects.filter(id__in=unworthy_ids)
+
+    # kick user out of all of them
+    for community in unworthy_communities:
+        leave_community(user, community) # we 'can' leave a community we are not in
     #########################
 
     post.save()
