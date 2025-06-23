@@ -8,9 +8,11 @@
 
 {% block body %}
 
-
+<div class="container">
     <h1>All the bulshitters we could find are listed here</h1>
+</div>
 
+<div class="container-fluid">
 {% for expertise_area_name, ordered_bulshiters_data in bulshitters.items %}
     <h3 style="margin-left: 40px">Area: {{ expertise_area_name }}</h3>
     <ul class="list-group">
@@ -21,15 +23,15 @@
                         {{ bulshitter.user.username }}
                          </a>
                     </div>
-                    <span class="badge text-bg-primary rounded-pill">
-                        Level: {{ bulshitter.fame_level_numeric | fametitle}}
+                    <span class="badge rounded-pill {{ bulshitter.fame_level_numeric | colorOfFameValue:"text-bg-" }}">
+                        Level: {{ bulshitter.fame_level_numeric | fameTitle}}
                     </span>
 
             </li>
 
         {% endfor %}
     </ul>
-
 {% endfor %}
+    </div>
 {% endblock %}
 

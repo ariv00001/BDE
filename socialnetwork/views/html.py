@@ -77,7 +77,7 @@ def bullshitters(request):
     context = {
         "bulshitters": api.bullshitters(), # now, I can use {% for b in bulshitters %} in bulshitters.html
     }
-    return render(request, "bulshitters.html", context=context)
+    return render(request, "bulshitters2.html", context=context)
 
 
 @require_http_methods(["POST"])
