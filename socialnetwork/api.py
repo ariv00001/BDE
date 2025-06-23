@@ -338,9 +338,11 @@ def similar_users(user: SocialNetworkUsers):
                     .values("similarity")
                 )
             )
-            .order_by("-similarity", "date_joined")
-            .filter(similarity=0)
+            .order_by("-similarity", "-date_joined")
+            .filter(similarity__gt=0)
     )
+
+
 
     return annotated_fame_users
     ######################### TODO: This is the end of my solution for T5
