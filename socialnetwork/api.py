@@ -305,6 +305,19 @@ def bullshitters():
     return bullshitters_by_expertise_area
 
 
+##### helper function for T7
+def get_available_communities(user: SocialNetworkUsers):
+    """Get available communities for a user based on their expertise areas and their fame level."""
+    eligible_community_ids = (
+        Fame.objects.filter(user=user, fame_level__numeric_value__gte=100)
+        .values_list("expertise_area", flat=True)
+    )
+
+    return ExpertiseAreas.objects.filter(
+        id__in=eligible_community_ids
+    ).exclude(
+        id__in=user.communities.values_list("id", flat=True)
+    )
 
 
 def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):

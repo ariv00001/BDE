@@ -13,9 +13,9 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-{% if request.session.community_mode %}primary{% else %}secondary{% endif %}">
                 {% if request.session.community_mode %}
-                    Community Mode (ON)
+                    Community Mode
                 {% else %}
-                    Community Mode (OFF)
+                    Standard Mode
                 {% endif %}
             </button>
         </form>
@@ -24,7 +24,7 @@
     <!-- Community Display (Only shown in community mode) -->
     {% if request.session.community_mode %}
         <div>
-            <h4>Community Mode</h4>
+            <h4>Communities</h4>
             {% for community in user_communities %}
                 <form action="{% url 'sn:leave_community' %}" method="POST">
                     <input type="hidden" name="community_id" value="{{ community.id }}">
@@ -33,7 +33,7 @@
                     </button>
                 </form>
                 {% empty %}
-                    <p>You haven't join any communities yet.</p>
+                    <p>You haven't joined any communities yet.</p>
             {% endfor %}
 
             <h4>Available Communities</h4>

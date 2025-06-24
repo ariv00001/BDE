@@ -1,3 +1,5 @@
+from zoneinfo import available_timezones
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.urls import reverse
@@ -20,6 +22,15 @@ def timeline(request):
     if 'community_mode' not in request.session:
         request.session['community_mode'] = False
 
+    ########### T7 ################
+    # getting the authenticated user
+    user = _get_social_network_user(request.user)
+
+    # getting the community data
+    joined_communities = user.communities.all()
+
+    # communities that is available to the user for joining based on their Super Pro threshold
+    available_communities = api.get_available_communities(user)
 
     # get extra URL parameters:
     keyword = request.GET.get("search", "")
@@ -28,28 +39,50 @@ def timeline(request):
 
     # if keyword is not empty, use search method of API:
     if keyword and keyword != "":
-        context = {
-            "posts": PostsSerializer(
-                api.search(keyword, published=published), many=True
-            ).data,
-            "searchkeyword": keyword,
-            "error": error,
-            "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
-        }
-    else:  # otherwise, use timeline method of API:
+        posts = api.search(keyword, published=published)
+    else:
+        posts = api.timeline(
+            user,
+            published=published,
+            community_mode=request.session['community_mode']
+        )
 
-        context = {
-            "posts": PostsSerializer(
-                api.timeline(
-                    _get_social_network_user(request.user),
-                    published=published,
-                ),
-                many=True,
-            ).data,
-            "searchkeyword": "",
-            "error": error,
-            "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
-        }
+    # now building the context
+    context = {
+        "posts": PostsSerializer(posts, many=True).data,
+        "searchkeyword": keyword,
+        "error": error,
+        "followers": list(api.follows(user).values_list("id", flat=True)),
+
+        # adding community data
+        "joined_communities": joined_communities,
+        "available_communities": available_communities,
+        "community_mode": request.session['community_mode'],
+    }
+
+    # if keyword and keyword != "":
+    #     context = {
+    #         "posts": PostsSerializer(
+    #             api.search(keyword, published=published), many=True
+    #         ).data,
+    #         "searchkeyword": keyword,
+    #         "error": error,
+    #         "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
+    #     }
+    # else:  # otherwise, use timeline method of API:
+    #
+    #     context = {
+    #         "posts": PostsSerializer(
+    #             api.timeline(
+    #                 _get_social_network_user(request.user),
+    #                 published=published,
+    #             ),
+    #             many=True,
+    #         ).data,
+    #         "searchkeyword": "",
+    #         "error": error,
+    #         "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
+    #     }
 
     return render(request, "timeline.html", context=context)
 
