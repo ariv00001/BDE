@@ -7,6 +7,47 @@
 
 {% block body %}
 
+    <!-- Community Mode Toggle Button -->
+    <div>
+        <form action="{% url 'sn:toggle_community_mode' %}" method="POST">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-{% if request.session.community_mode %}primary{% else %}secondary{% endif %}">
+                {% if request.session.community_mode %}
+                    Community Mode (ON)
+                {% else %}
+                    Community Mode (OFF)
+                {% endif %}
+            </button>
+        </form>
+    </div>
+
+    <!-- Community Display (Only shown in community mode) -->
+    {% if request.session.community_mode %}
+        <div>
+            <h4>Community Mode</h4>
+            {% for community in user_communities %}
+                <form action="{% url 'sn:leave_community' %}" method="POST">
+                    <input type="hidden" name="community_id" value="{{ community.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        {{ community.label }} (Leave)
+                    </button>
+                </form>
+                {% empty %}
+                    <p>You haven't join any communities yet.</p>
+            {% endfor %}
+
+            <h4>Available Communities</h4>
+            {% for community in available_communities %}
+                <form action="{% url 'sn:join_community' %}" method="POST">
+                    <input type="hidden" name="community_id" value="{{ community.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-success">
+                        {{ community.label }} (Join)
+                    </button>
+                </form>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     <br>
     <div class="card"
          style="margin-bottom: 20px; border-color: white; width: 300px; margin-left: auto; margin-right: 40px;">

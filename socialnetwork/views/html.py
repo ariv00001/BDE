@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from fame.models import ExpertiseAreas
 from socialnetwork import api
 from socialnetwork.api import _get_social_network_user
 from socialnetwork.models import SocialNetworkUsers
@@ -83,17 +84,40 @@ def bullshitters(request):
 @require_http_methods(["POST"])
 @login_required
 def toggle_community_mode(request):
-    raise NotImplementedError("Not implemented yet")
+    request.session["community_mode"] = not request.session.get("community_mode", False)
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["POST"])
 @login_required
 def join_community(request):
-    raise NotImplementedError("Not implemented yet")
+    # T7
+    user = _get_social_network_user(request.user)
+    community_id = request.POST.get("community_id")  # Use "community_id" for sending the POST request
+    if not community_id:
+        raise ValueError("No community_id provided")
+
+    community_to_join = ExpertiseAreas.objects.get(id=community_id)
+
+    if not user.communities.filter(id=community_id).exists():
+        api.join_community(user, community_to_join)
+
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["POST"])
 @login_required
 def leave_community(request):
-    raise NotImplementedError("Not implemented yet")
+    # T7
+    user = _get_social_network_user(request.user)
+    community_id = request.POST.get("community_id") # Use "community_id" for sending the POST request
+    if not community_id:
+        raise ValueError("No community_id provided")
+
+    community_to_leave = ExpertiseAreas.objects.get(id=community_id)
+
+    if user.communities.filter(id=community_to_leave).exists():
+        api.leave_community(user, community_to_leave)
+
+    return redirect(reverse("sn:timeline"))
 
 @require_http_methods(["GET"])
 @login_required
