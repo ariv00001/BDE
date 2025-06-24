@@ -4,7 +4,7 @@ from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField
     F, Prefetch, QuerySet, Sum, Subquery, Func
 from django.db.models.expressions import CombinedExpression
 from rest_framework.utils.mediatypes import order_by_precedence
-from docs.conf import author
+#from docs.conf import author
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
 from socialnetwork.models import Posts, SocialNetworkUsers
@@ -373,10 +373,9 @@ def similar_users(user: SocialNetworkUsers):
                     .values("similarity")
                 )
             )
-            .order_by("-similarity", "date_joined")
-            .filter(similarity=0)
+            .order_by("-similarity", "-date_joined")
+            .filter(similarity__gt=0)
     )
-
     return annotated_fame_users
     ######################### TODO: This is the end of my solution for T5
 
