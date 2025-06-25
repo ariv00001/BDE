@@ -147,7 +147,7 @@ def leave_community(request):
 
     community_to_leave = ExpertiseAreas.objects.get(id=community_id)
 
-    if user.communities.filter(id=community_to_leave).exists():
+    if user.communities.filter(id=community_id).exists():
         api.leave_community(user, community_to_leave)
 
     return redirect(reverse("sn:timeline"))

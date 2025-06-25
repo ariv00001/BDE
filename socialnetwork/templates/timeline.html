@@ -25,8 +25,9 @@
     {% if request.session.community_mode %}
         <div>
             <h4>Communities</h4>
-            {% for community in user_communities %}
+            {% for community in joined_communities %}
                 <form action="{% url 'sn:leave_community' %}" method="POST">
+                    {% csrf_token %}
                     <input type="hidden" name="community_id" value="{{ community.id }}">
                     <button type="submit" class="btn btn-sm btn-outline-danger">
                         {{ community.label }} (Leave)
@@ -39,6 +40,7 @@
             <h4>Available Communities</h4>
             {% for community in available_communities %}
                 <form action="{% url 'sn:join_community' %}" method="POST">
+                    {% csrf_token %}
                     <input type="hidden" name="community_id" value="{{ community.id }}">
                     <button type="submit" class="btn btn-sm btn-outline-success">
                         {{ community.label }} (Join)
@@ -73,8 +75,11 @@
         <div class="card"
              style="margin-bottom: 20px; margin-left: 40px; margin-right: 40px; background-color: {% if post.published %}white{% else %}mistyrose{% endif %};">
             <div class="flex-container">
-                <b><a href="/fame/html/fame?userid={{ post.author.id }}">{{ post.author.name|highlight:searchkeyword }}
-                </b></a>&nbsp;
+                <b>
+                    <a href="/fame/html/fame?userid={{ post.author.id }}">
+                        {{ post.author.name|highlight:searchkeyword }}
+                    </a>
+                </b>
                 <span style="color:gray">{{ post.author.email|highlight:searchkeyword }}</span>&nbsp;&nbsp;
                 <span style="color:gray">{{ post.date_submitted }}</span>
                 {% if not post.published %}
