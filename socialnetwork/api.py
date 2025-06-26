@@ -4,6 +4,7 @@ from django.db.models import Q, Exists, OuterRef, When, IntegerField, FloatField
     F, Prefetch, QuerySet, Sum, Subquery, Func
 from django.db.models.expressions import CombinedExpression
 from rest_framework.utils.mediatypes import order_by_precedence
+#from docs.conf import author
 
 from fame.models import Fame, FameLevels, FameUsers, ExpertiseAreas
 from socialnetwork.models import Posts, SocialNetworkUsers
@@ -33,11 +34,14 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 3. the post contains the community’s expertise area
         # 4. the post is published or the user is the author
 
-        pass
-        #########################
-        # add your code here
-        #########################
-
+        _communities = user.communities.all()
+        print(_communities)
+        posts = Posts.objects.filter(
+            (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
+             Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
+             Q(expertise_area_and_truth_ratings=F('author__communities')) &  # Check if the author knows their stuff
+             (Q(published=published) | Q(author=user)))
+        ).order_by("-submitted")
     else:
         # in standard mode, posts of followed users are displayed
         _follows = user.follows.all()
@@ -185,6 +189,19 @@ def submit_post(
 
     #########################
 
+    #########################
+    #T4:
+    # Interpretation: after submission, leave ALL unallowed communities (not just those related to the post)
+
+    # Fetch ALL expertise areas user isn't allowed to be in
+    unworthy_ids = Fame.objects.filter(Q(user = user) & Q(fame_level__lt=100)).values_list('expertise_area', flat=True)
+    unworthy_communities = ExpertiseAreas.objects.filter(id__in=unworthy_ids)
+
+    # kick user out of all of them
+    for community in unworthy_communities:
+        leave_community(user, community) # we 'can' leave a community we are not in
+    #########################
+
     post.save()
 
     return (
@@ -287,16 +304,40 @@ def bullshitters():
     return bullshitters_by_expertise_area
 
 
+##### helper function for T7
+def get_available_communities(user: SocialNetworkUsers):
+    """Get available communities for a user based on their expertise areas and their fame level."""
+    eligible_community_ids = (
+        Fame.objects.filter(user=user, fame_level__numeric_value__gte=100)
+        .values_list("expertise_area", flat=True)
+    )
+
+    return ExpertiseAreas.objects.filter(
+        id__in=eligible_community_ids
+    ).exclude(
+        id__in=user.communities.values_list("id", flat=True)
+    )
 
 
 def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):
     """Join a specified community. Note that this method does not check whether the user is eligible for joining the
     community.
     """
-    pass
-    #########################
-    # add your code here
-    #########################
+    if community in user.communities.all():
+        return {"joined": False}
+    user.communities.add(community)
+    user.save()
+    return {"joined": True}
+
+
+
+def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
+    """Leave a specified community."""
+    if community not in user.communities.all():
+        return {"left": False}
+    user.communities.remove(community)
+    user.save()
+    return {"left": True}
 
 
 
@@ -344,19 +385,10 @@ def similar_users(user: SocialNetworkUsers):
                     .values("similarity")
                 )
             )
-            .order_by("-similarity", "date_joined")
-            .filter(similarity=0)
+            .order_by("-similarity", "-date_joined")
+            .filter(similarity__gt=0)
     )
-
     return annotated_fame_users
     ######################### TODO: This is the end of my solution for T5
 
-
-
-def leave_community(user: SocialNetworkUsers, community: ExpertiseAreas):
-    """Leave a specified community."""
-    pass
-    #########################
-    # add your code here
-    #########################
 
