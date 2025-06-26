@@ -195,7 +195,7 @@ def submit_post(
     # Interpretation: after submission, leave ALL unallowed communities (not just those related to the post)
 
     # Fetch ALL expertise areas user isn't allowed to be in
-    unworthy_ids = Fame.objects.filter(Q(user = user) & Q(fame_level__lt=100)).values_list('expertise_area', flat=True)
+    unworthy_ids = Fame.objects.filter(Q(user = user) & Q(fame_level__numeric_value__lt=100)).values_list('expertise_area', flat=True)
     unworthy_communities = ExpertiseAreas.objects.filter(id__in=unworthy_ids)
 
     # kick user out of all of them
