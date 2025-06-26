@@ -39,10 +39,9 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         posts = Posts.objects.filter(
             (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
              Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
-             Q (expertise_area_and_truth_ratings=F('author__communities')) & # Check if the author knows their stuff
+             Q(expertise_area_and_truth_ratings=F('author__communities')) &  # Check if the author knows their stuff
              (Q(published=published) | Q(author=user)))
         ).order_by("-submitted")
-        print(posts.query.__str__())
     else:
         # in standard mode, posts of followed users are displayed
         _follows = user.follows.all()
