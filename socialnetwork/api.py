@@ -39,10 +39,9 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         posts = Posts.objects.filter(
             (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
              Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
-             Q (expertise_area_and_truth_ratings=F('author__communities')) & # Check if the author knows their stuff
+             Q(expertise_area_and_truth_ratings=F('author__communities')) &  # Check if the author knows their stuff
              (Q(published=published) | Q(author=user)))
         ).order_by("-submitted")
-        print(posts.query.__str__())
     else:
         # in standard mode, posts of followed users are displayed
         _follows = user.follows.all()
@@ -305,6 +304,19 @@ def bullshitters():
     return bullshitters_by_expertise_area
 
 
+##### helper function for T7
+def get_available_communities(user: SocialNetworkUsers):
+    """Get available communities for a user based on their expertise areas and their fame level."""
+    eligible_community_ids = (
+        Fame.objects.filter(user=user, fame_level__numeric_value__gte=100)
+        .values_list("expertise_area", flat=True)
+    )
+
+    return ExpertiseAreas.objects.filter(
+        id__in=eligible_community_ids
+    ).exclude(
+        id__in=user.communities.values_list("id", flat=True)
+    )
 
 
 def join_community(user: SocialNetworkUsers, community: ExpertiseAreas):

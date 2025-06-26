@@ -34,37 +34,50 @@
 
 <div class="body-content">
     <header>
-        <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-            <ul class="navbar-nav">
-                {% if user.is_authenticated %}
-                    <li class="nav-item active">
-                        <a class="navbar-brand" href="{% url 'sn:timeline' %}">Home</a>
-                    </li>
-                    <li class="nav-item active">
-                        <a class="navbar-brand" href="{% url 'home' %}">URIs</a>
-                    </li>
-                {% endif %}
-            </ul>
-            <ul class="navbar-nav ms-auto">
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark px-3">
+        <ul class="navbar-nav">
+            {% if user.is_authenticated %}
+                <li class="nav-item active">
+                    <a class="navbar-brand" href="{% url 'sn:timeline' %}">Home</a>
+                </li>
+                <li class="nav-item active">
+                    <a class="navbar-brand" href="{% url 'home' %}">URIs</a>
+                </li>
+            {% endif %}
+        </ul>
+        <ul class="navbar-nav ms-auto">
+            {% if user.is_authenticated %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
                        aria-expanded="false" data-testid="navbar_user_section">
-                        {% if user.is_authenticated %}
-                            <span>{{ request.user.first_name }} {{ request.user.last_name }}</span>
-                        {% else %}
-                            <span>Not logged in</span>
-                        {% endif %}
+                        <span>{{ request.user.first_name }} {{ request.user.last_name }}</span>
                     </a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <!-- Community Mode Toggle Button -->
+                        <form action="{% url 'sn:toggle_community_mode' %}" method="POST" class="px-2 py-1">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-{% if request.session.community_mode %}primary{% else %}secondary{% endif %} btn-sm w-100">
+                                {% if request.session.community_mode %}
+                                    Standard Mode
+                                {% else %}
+                                    Community Mode
+                                {% endif %}
+                            </button>
+                        </form>
+                        <!-- Logout Button -->
+                        <form method="post" action="{% url 'logout' %}" class="px-2 py-1">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning btn-sm w-100">Logout</button>
+                        </form>
                     </div>
-            </ul>
-            {% if user.is_authenticated %}
-                <form method="post" action="{% url 'logout' %}">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-warning">logout</button>
-                </form>
+                </li>
+            {% else %}
+                <li class="nav-item">
+                    <span class="nav-link">Not logged in</span>
+                </li>
             {% endif %}
-        </nav>
+        </ul>
+    </nav>
     </header>
 
     <div id="wrap">
