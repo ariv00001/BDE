@@ -392,3 +392,29 @@ def similar_users(user: SocialNetworkUsers):
     ######################### TODO: This is the end of my solution for T5
 
 
+############################
+#ADDITIONAL: helpers
+
+########################################
+# Additional funcitonality
+
+def userInCommunity(user: SocialNetworkUsers, community: ExpertiseAreas):
+    return user.communities.filter(id=community.id).exists()
+
+def communitySocialNetworkUsers(community: ExpertiseAreas):
+    members = (
+        Fame.objects
+            .filter(expertise_area=community, fame_level__numeric_value__gte=100)
+            .select_related("user")
+            .order_by("-fame_level__numeric_value")
+    )
+
+    #members = SocialNetworkUsers.objects.filter(communities__in=[community]).distinct().annotate(fame_level=F("fame__fame_level__numeric_value")).order_by("-fame_level")
+
+    members_by_expertise_area = {}
+    for fame_data in members:
+        members_by_expertise_area.setdefault(fame_data.fame_level.numeric_value,[]).append({
+            "user": fame_data.user,
+        })
+
+    return members_by_expertise_area

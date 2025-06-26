@@ -1,6 +1,7 @@
 from django.urls import path
 
-from socialnetwork.views.html import timeline, bullshitters, toggle_community_mode, join_community, leave_community
+from socialnetwork.views.html import timeline, bullshitters, toggle_community_mode, join_community, leave_community, \
+    communities, errorpage, change_theme
 from socialnetwork.views.html import follow
 from socialnetwork.views.html import unfollow
 from socialnetwork.views.rest import PostsListApiView
@@ -18,4 +19,11 @@ urlpatterns = [
     path("toggle_community/", toggle_community_mode, name="toggle_community_mode"),
     path("join_community/", join_community, name="join_community"),
     path("leave_community", leave_community, name="leave_community"),
+
+################################
+#ADDITIONAL: additional Views
+    path("html/communities", communities, name="communities"),
+    path("errorpage", errorpage, name="errorpage"),
+    path("change_theme", change_theme, name="change_theme"),
+
 ]

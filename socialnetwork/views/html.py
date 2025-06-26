@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
+from assets.themes.helper import ownRender
 from fame.models import ExpertiseAreas
 from socialnetwork import api
 from socialnetwork.api import _get_social_network_user
@@ -84,7 +85,7 @@ def timeline(request):
     #         "followers": list(api.follows(_get_social_network_user(request.user)).values_list('id', flat=True)),
     #     }
 
-    return render(request, "timeline.html", context=context)
+    return ownRender(request, "timeline.html", context=context)
 
 
 @require_http_methods(["POST"])
@@ -111,7 +112,7 @@ def bullshitters(request):
     context = {
         "bulshitters": api.bullshitters(), # now, I can use {% for b in bulshitters %} in bulshitters.html
     }
-    return render(request, "bulshitters.html", context=context)
+    return ownRender(request, "bulshitters.html", context=context)
 
 
 @require_http_methods(["POST"])
@@ -156,3 +157,41 @@ def leave_community(request):
 @login_required
 def similar_users(request):
     raise NotImplementedError("Not implemented yet")
+
+
+
+######################
+#ADDITIONAL: Addinitonal functionality
+
+@require_http_methods(["GET"])
+@login_required
+def communities(request):
+    user = _get_social_network_user(request.user)
+    community_id = request.GET.get("community_id")
+    #try:
+    community_id = int(community_id)
+    community = user.communities.get(id=community_id)
+    if api.userInCommunity(user, community):
+        context = {
+            "expertiseArea": community,
+            "users": api.communitySocialNetworkUsers(community),
+        }
+        return ownRender(request, "communities.html", context=context)
+    #except:
+    #    pass
+    return redirect(reverse("sn:errorpage"))
+
+
+@require_http_methods(["GET", "POST"])
+def errorpage(request):
+    return render(request, "errorpage.html")
+
+@require_http_methods(["GET"])
+@login_required
+def change_theme(request):
+    theme_name = request.GET.get('theme')
+    if theme_name:
+        request.session['theme'] = theme_name
+        return redirect('home')
+    else:
+        return redirect(reverse("sn:errorpage"))

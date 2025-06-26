@@ -1,31 +1,53 @@
 {% extends "base.html" %}
 
 {% load static %}
+{% load fameUserHelpers %}
+
 
 {% block title %}Bulshitters{% endblock %}
 
 {% block body %}
 
+<div class="container text-center">
+    <h1 >All the bulshitters we could find are listed here</h1>
+</div>
 
-    <h1>All the bulshitters we could find are listed here</h1>
+<div class="container-fluid">
 
-{% for expertise_area_name, ordered_bulshiters_data in bulshitters.items %}
-    <h3 style="margin-left: 40px">Area: {{ expertise_area_name }}</h3>
-    <ul class="list-group">
-        {% for bulshitter  in ordered_bulshiters_data %}
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <div class="card-body position-relative">
-                        User: {{ bulshitter.user }}
-                    </div>
-                    <span class="badge text-bg-primary rounded-pill">
-                        Level: {{ bulshitter.fame_level_numeric}}
-                    </span>
+<div id="bulshitterAccordion" class="accordion">
+    {% for expertise_area, ordered_bulshiters_data in bulshitters.items %}
+    <div class="accordion-item">
 
-            </li>
+        <!-- Button -->
+        <h3 id="heading-{{ expertise_area.label | asVar }}" class="accordion-header">
+        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ expertise_area.label | asVar  }}" aria-expanded="false" aria-controls="collapse-{{ expertise_area.label | asVar  }}">
+            Area:&nbsp;<strong>{{ expertise_area.label }}</strong>
+        </button>
+        </h3>
 
-        {% endfor %}
-    </ul>
+        <!-- content -->
+        <div id="collapse-{{ expertise_area.label | asVar  }}" class="accordion-collapse collapse" aria-labelledby="heading-{{ expertise_area.label | asVar  }}">
+            <div class="accordion-body">
 
-{% endfor %}
+                <ul class="list-group">
+                {% for bulshitter  in ordered_bulshiters_data %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center {{ bulshitter.user | userHighlight:user }}">
+                            <div class="card-body position-relative">
+                                {{ bulshitter.user | userCredentials }}
+                            </div>
+                            <span class="badge rounded-pill {{ bulshitter.fame_level_numeric | colorOfFameValue:"text-bg-" }}">
+                                Level: {{ bulshitter.fame_level_numeric | fameTitle}}&nbsp;({{ bulshitter.fame_level_numeric }})
+                            </span>
+                    </li>
+                {% endfor %}
+                </ul>
+
+            </div>
+        </div>
+
+    </div>
+    {% endfor %}
+</div>
+</div>
+
 {% endblock %}
-

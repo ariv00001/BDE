@@ -1,4 +1,4 @@
-{% load static %}
+{% load static themeHelper %}
 
 <!doctype html>
 <html>
@@ -27,7 +27,12 @@
     />
     <link rel="stylesheet" href="{% static 'main.css' %}"/>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+    <!-- added -->
+    {% if theme %}<link
+            rel="stylesheet"
+            href="{% static theme|parseTheme %}"
+    />{% endif %}
+    <!-- added -->
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -82,7 +87,9 @@
 
     <div id="wrap">
         <div class="container-fluid" id="main">
+            <div class="mb-2"></div> <!-- added spacing -->
             {% block body %} {% endblock %}
+            <div class="mb-5"></div> <!-- added spacing -->
         </div>
     </div>
     {% if messages %}
@@ -93,7 +100,7 @@
         </ul>
     {% endif %}
 
-    {% block content %} {% endblock %}
+    {% block content %} {% if color_theme %}<link rel="stylesheet" href="{{ color_theme }}">{% endif %}{% endblock %}
 
     <footer
             class="page-footer fixed-bottom font-small bg-dark pt-1"

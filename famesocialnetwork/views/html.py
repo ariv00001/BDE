@@ -4,13 +4,14 @@ from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.views.decorators.http import require_http_methods
 
+from assets.themes.helper import ownRender
 from socialnetwork.api import _get_social_network_user
 
 
 @require_http_methods(["GET"])
 @login_required
 def home(request):
-    return render(request, "index.html")
+    return ownRender(request, "index.html")
 
 
 class MyLoginView(LoginView):
