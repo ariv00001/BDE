@@ -35,7 +35,7 @@ def timeline(user: SocialNetworkUsers, start: int = 0, end: int = None, publishe
         # 4. the post is published or the user is the author
 
         _communities = user.communities.all()
-        print(_communities)
+
         posts = Posts.objects.filter(
             (Q(author__communities__in=_communities) &                       # Check if author is in a relevant community
              Q(expertise_area_and_truth_ratings__in=_communities) &          # Check if the post is in a relevant community
