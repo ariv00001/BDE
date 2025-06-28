@@ -368,6 +368,9 @@ def similar_users(user: SocialNetworkUsers):
 
 ############################
 #ADDITIONAL: helpers
+# T8:
+#def idkyet(similarUsers: QuerySet<FameUsers>):
+
 
 ########################################
 # Additional funcitonality

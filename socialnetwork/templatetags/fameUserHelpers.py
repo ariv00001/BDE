@@ -67,3 +67,7 @@ def userHighlight(user, currentUser=None):
 def isUser(user, currentUser=None):
     print(user, currentUser, "JI")
     return user == currentUser
+
+@register.filter()
+def simInPercent(similarity):
+    return f"{(similarity * 100):0.4g}"

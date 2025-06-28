@@ -195,3 +195,12 @@ def change_theme(request):
         return redirect('home')
     else:
         return redirect(reverse("sn:errorpage"))
+
+@require_http_methods(["GET"])
+@login_required
+def similarusers(request):
+    user = _get_social_network_user(request.user)
+    context = {
+        "similarUsers": api.similar_users(user),
+    }
+    return ownRender(request, "similarUsers.html", context=context)
