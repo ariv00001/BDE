@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.views.decorators.http import require_http_methods
 
+from assets.themes.helper import ownRender
 from fame.serializers import FameSerializer
 from socialnetwork import api
 from socialnetwork.api import _get_social_network_user
@@ -25,6 +26,6 @@ def fame_list(request):
     user, fame = api.fame(user)
     context = {
         "fame": FameSerializer(fame, many=True).data,
-        "user": user if user else "",
+        "User": user if user else "",
     }
-    return render(request, "fame.html", context=context)
+    return ownRender(request, "fame.html", context=context)

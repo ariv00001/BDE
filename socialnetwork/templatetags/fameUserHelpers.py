@@ -1,4 +1,5 @@
 from django import template
+from django.utils.functional import SimpleLazyObject
 from django.utils.safestring import mark_safe
 
 from fame.models import FameLevels
@@ -42,20 +43,20 @@ def colorOfFameValue(fame_value, type):
 
 @register.filter()
 def asVar(string):
-    print(string,[string])
     return mark_safe("_".join( string.split() ))
 
 @register.filter()
 def userCredentials(user, currentUser=None):
+    print(user, currentUser)
     if(user != currentUser): return mark_safe('''
     <b><a href="/fame/html/fame?userid={}">{}</a></b>
-    &nbsp;
+    
     <span style="color:gray">{}</span>
     '''.format( user.id, fullName(user), user.email))
 
     else: return mark_safe('''
     <b><a href="/fame/html/fame?userid={}">{}</a></b>
-    &nbsp;(You)&nbsp;
+    (You)
     <span style="color:gray">{}</span>
     '''.format( user.id, fullName(user), user.email))
 

@@ -3,6 +3,7 @@
 
 {% load static %}
 {% load highlight %}
+{% load fameUserHelpers %}
 
 {% block title %}Timeline{% endblock %}
 
@@ -12,7 +13,7 @@
 
     </style>
     <br>
-    <h2>Fame for user {{ user }}</h2>
+    <h2>Fame for {% if User.id == user.id %} you: {% else %} user: {% endif %} {{ User }}</h2>
     <br>
     {% for f in fame %}
         <div class="card" style="margin-bottom: 20px; margin-left: 40px; margin-right: 40px;">
