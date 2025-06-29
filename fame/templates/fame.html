@@ -16,7 +16,7 @@
     <h2>Fame for {% if User.id == user.id %} you: {% else %} user: {% endif %} {{ User }}</h2>
     <br>
     {% for f in fame %}
-        <div class="card" style="margin-bottom: 20px; margin-left: 40px; margin-right: 40px;">
+        <div class="card {% if f.score.numeric < 0 %} bg-danger-subtle {% elif f.score.numeric > 0 %} bg-success-subtle {% endif %}" style="margin-bottom: 20px; margin-left: 40px; margin-right: 40px;">
             <div class="flex-container">
                 {% if f.score.numeric < 0 %}
                     <div class="bullshit"><b>{{ f.expertise_area.label }}</b>: {{ f.score.name }}</div>

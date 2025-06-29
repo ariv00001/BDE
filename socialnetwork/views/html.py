@@ -192,7 +192,13 @@ def change_theme(request):
     theme_name = request.GET.get('theme')
     if theme_name:
         request.session['theme'] = theme_name
-        return redirect('home')
+        path = request.GET.get('redirect')
+        print(request.GET)
+        print(path,"-------------------------------------")
+        if(path):
+            return redirect(path)
+        else:
+            return redirect('home')
     else:
         return redirect(reverse("sn:errorpage"))
 
